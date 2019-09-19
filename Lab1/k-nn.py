@@ -5,24 +5,7 @@ from collections import Counter
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-
-#Settings
-k = 5
-runs = 1000
-
-#Haberman
-#path = "haberman.data"
-#indexOfAttributes = (0,2)
-#indexOfClass = 3
-#axisNames = ["Age", "YearOperation", "AuxilliaryNodes", "Class"]
-
-#Breast Cancer Wisconsin
-path = "breast-cancer-wisconsin.data"
-indexOfAttributes = (1,9)
-indexOfClass = 10
-axisNames = ["SampleNumber", "Clump Thickness", "Uniformity of Cell Size", "Uniformity of Cell Shape", "Marginal Adhesion","Single Epithelial Cell Size","Bare Nuclei","Bland Chromatin","Normal Nucleoli","Mitoses"]
-
-def calculateDistance(x,y):
+def calculateDistance(x,y, indexOfAttributes):
 	dis = 0
 	#Compute the euclidian distance, exclude id field in first column and class in last column
 	for i in range(indexOfAttributes[0], indexOfAttributes[1]+1):
@@ -44,55 +27,78 @@ def plot2D(xaxisIndex, yaxisIndex, classIndex):
 	plt.ylabel(axisNames[yaxisIndex])
 	plt.show()
 
-#Read Data from csv
-data = pd.read_csv(path, delimiter=",", na_values="?", header=None, index_col=False)
-data = np.array(data)
+def knn(k, path, indexOfAttributes, indexOfClass):
+	#Read Data from csv
+	data = pd.read_csv(path, delimiter=",", na_values="?", header=None, index_col=False)
+	data = np.array(data)
 
-#Store shape of data for easy access
-n = data.shape[1] # columns
-m = data.shape[0] # rows
+	#Create train & test set
+	np.random.shuffle(data) #Shuffle data set
+	trainingSize = int(float(testTrainingRatio) * data.shape[0])
+	train, test = data[:trainingSize,:], data[trainingSize:,:]
 
-#Get Classes
-classesVal = np.unique(data[:,indexOfClass])
+	#Store shape of data for easy access
+	l = test.shape[0] # columns
+	m = train.shape[0] # rows
+	n = train.shape[1] # columns
 
-#Create dictionary to lookup classes
-classes = {x:i for i,x in enumerate(classesVal)}
+	#Get Classes
+	classNames = np.unique(train[:,indexOfClass])
 
-#Create Confusion Matrix
-confMatrix = np.zeros((len(classes),len(classes)))
+	#Create dictionary to lookup classes
+	classes = {x:i for i,x in enumerate(classNames)}
 
-for r in range(runs):
+	#Create Confusion Matrix
+	confMatrix = np.zeros((len(classes),len(classes)))
+
 	#Select element to predict
-	toPredict = random.randint(0,m-1)
+	for toPredict in range(l):
+		#Create array to store distances to that point
+		dist = np.empty(m)
 
-	#Create array to store distances to that point
-	dist = np.empty(m)
+		#Calculate distances to all points
+		for x in range(0, m):
+			dist[x] = calculateDistance(train[x], test[toPredict], indexOfAttributes);
 
-	#Calculate distances to all points
-	for x in range(0, m):
-		dist[x] = calculateDistance(data[x], data[toPredict]);
+		#Sort Points by distance
+		closestByIndex = dist.argsort()
 
-	#Set distance to point to predict to infinity
-	dist[toPredict] = np.Infinity
+		#Calculate Class from k-nn
+		cnt = Counter((train[closestByIndex])[:k,indexOfClass])
 
-	#Sort Points by distance
-	closestByIndex = dist.argsort()
+		#Store predictions marking if they are correct or wrong
+		predictions = (cnt.most_common(1))[0][0]
 
-	#Calculate Class from k-nn
-	cnt = Counter((data[closestByIndex])[:k,indexOfClass])
-	prediction = (cnt.most_common(1))[0][0]
+		confMatrix[classes.get(predictions)][classes.get(test[toPredict][indexOfClass])]+=1
 
-	confMatrix[classes.get(prediction)][classes.get(data[toPredict][indexOfClass])]+=1
+		#Mark wrong predictions
+		if test[toPredict][indexOfClass] == predictions:
+			test[toPredict][indexOfClass] = -1
+
+	print("######## RESULTS k = "+str(k)+" FOR "+path+" ########")
+
+	print("Accuracy: "+str((confMatrix[0][0] + confMatrix[1][1]) / l * 100)+"%")
+	print()
+	print("        CONFUSSION MATRIX")
+	print("          ACTUAL CLASS       ")
+	print("\t\t\t"+str(classNames[0])+"\t\t"+str(classNames[1]))
+	print("PREDI  "+str(classNames[0])+"\t" +str(confMatrix[0][0])+"\t"+str(confMatrix[0][1]))
+	print("CTION  "+str(classNames[1])+"\t"+str(confMatrix[1][0])+"\t"+str(confMatrix[1][1]))
+	print()
+	print()
+
+#Settings
+testTrainingRatio = 0.2 #Part used for testing 
+
+knn(3, "haberman.data", (0,2), 3)
+knn(6, "haberman.data", (0,2), 3)
+
+knn(3, "breast-cancer-wisconsin.data", (1,9), 10)
+knn(6, "breast-cancer-wisconsin.data", (1,9), 10)
 
 
+#plot2D(1,2,indexOfClass)
+#plot2D(0,2,indexOfClass)
+#plot2D(0,1,indexOfClass)
 
-print("Accuracy: "+str((confMatrix[0][0] + confMatrix[1][1]) / runs * 100)+"%")
-
-print("###  CONFUSSION MATRIX ###")
-print("          ACTUAL CLASS       ")
-print("\t\t\t"+str(classesVal[0])+"\t\t"+str(classesVal[1]))
-print("PREDI  "+str(classesVal[0])+"\t" +str(confMatrix[0][0])+"\t"+str(confMatrix[0][1]))
-print("CTION  "+str(classesVal[1])+"\t"+str(confMatrix[1][0])+"\t"+str(confMatrix[1][1]))
-
-plot2D(1,2,indexOfClass)
-plot3D(0,1,2,indexOfClass)
+#plot3D(0,1,2,indexOfClass)
