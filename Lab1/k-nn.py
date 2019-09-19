@@ -3,8 +3,11 @@ import numpy as np
 import random
 from collections import Counter
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+import matplotlib.patches as mpatches
 from mpl_toolkits.mplot3d import Axes3D
 
+#Calculates Euclidian Distance between two points
 def calculateDistance(x,y, indexOfAttributes):
 	dis = 0
 	#Compute the euclidian distance, exclude id field in first column and class in last column
@@ -12,21 +15,68 @@ def calculateDistance(x,y, indexOfAttributes):
 		dis = dis + np.power(x[i] - y[i],2)
 	return(np.sqrt(dis))
 
-def plot3D(xaxisIndex, yaxisIndex, zaxisIndex, classIndex):
+#Maps each value in c to a color and returns array of same length than c containing color
+#for each value in c 
+def getColors(c):
+	colors=['royalblue','forestgreen','deepskyblue','indianred', 'limegreen', 'darkorange']
+
+	classNames = np.unique(c)
+	classesLookup = {x:i for i,x in enumerate(classNames)}
+
+	r = [None] * c.shape[0]#c.shape[0], dtype='str')
+	for i in range(c.shape[0]):
+		r[i] = colors[classesLookup.get(c[i])]
+
+	return r
+
+def plot3D(x, y, z, c, axisNames, title):
+	colors = getColors(c)
+
 	fig = plt.figure()
 	ax = fig.add_subplot(111, projection='3d')
-	ax.scatter(data[:,xaxisIndex], data[:,yaxisIndex], data[:,zaxisIndex], c=data[:,classIndex])
-	ax.set_xlabel(axisNames[xaxisIndex])
-	ax.set_ylabel(axisNames[yaxisIndex])
-	ax.set_zlabel(axisNames[zaxisIndex])
+	ax.scatter(x, y, z, c=colors)
+	ax.set_xlabel(axisNames[0])
+	ax.set_ylabel(axisNames[1])
+	ax.set_zlabel(axisNames[2])	
+	ax.set_title(title)
+
+	cT = mpatches.Patch(color='royalblue', label='True')
+	cF = mpatches.Patch(color='forestgreen', label='False')
+	cTP = mpatches.Patch(color='deepskyblue', label='TP')
+	cFN = mpatches.Patch(color='indianred', label='FN')
+	cTN = mpatches.Patch(color='limegreen', label='TN')
+	cFP = mpatches.Patch(color='darkorange', label='FP')
+
+	plt.legend(handles=[cT,cF, cTP, cFP, cTN, cFN])
 	plt.show()
 
-def plot2D(xaxisIndex, yaxisIndex, classIndex):
-	plt.scatter(data[:,xaxisIndex], data[:,yaxisIndex], c=data[:,classIndex])
-	plt.xlabel(axisNames[xaxisIndex])
-	plt.ylabel(axisNames[yaxisIndex])
+def plot2D(x, y, c, axisNames, title):
+	colors = getColors(c)
+
+	scatter = plt.scatter(x, y, c=colors)
+	plt.xlabel(axisNames[0])
+	plt.ylabel(axisNames[1])
+	plt.title(title)
+
+	cT = mpatches.Patch(color='royalblue', label='Positive')
+	cF = mpatches.Patch(color='forestgreen', label='Negative')
+	cTP = mpatches.Patch(color='deepskyblue', label='TP')
+	cFN = mpatches.Patch(color='indianred', label='FN')
+	cTN = mpatches.Patch(color='limegreen', label='TN')
+	cFP = mpatches.Patch(color='darkorange', label='FP')
+
+	plt.legend(handles=[cT,cF, cTP, cFP, cTN, cFN])
 	plt.show()
 
+def plot(data, plotValues, axisNames, title):
+	if(len(plotValues) == 3):
+		axis = [axisNames[plotValues[0]],axisNames[plotValues[1]]]
+		plot2D(data[:,plotValues[0]], data[:,plotValues[1]], data[:,plotValues[2]], axis, title)
+	if(len(plotValues) == 4):
+		axis = [axisNames[plotValues[0]],axisNames[plotValues[1]],axisNames[plotValues[2]]]
+		plot3D(data[:,plotValues[0]], data[:,plotValues[1]], data[:,plotValues[2]], data[:,plotValues[3]], axis, title)
+
+#Predicts using knn and returns data containing the predictions
 def knn(k, path, indexOfAttributes, indexOfClass):
 	#Read Data from csv
 	data = pd.read_csv(path, delimiter=",", na_values="?", header=None, index_col=False)
@@ -38,7 +88,7 @@ def knn(k, path, indexOfAttributes, indexOfClass):
 	train, test = data[:trainingSize,:], data[trainingSize:,:]
 
 	#Store shape of data for easy access
-	l = test.shape[0] # columns
+	l = test.shape[0] # rows
 	m = train.shape[0] # rows
 	n = train.shape[1] # columns
 
@@ -50,6 +100,9 @@ def knn(k, path, indexOfAttributes, indexOfClass):
 
 	#Create Confusion Matrix
 	confMatrix = np.zeros((len(classes),len(classes)))
+
+	#Store Predictions
+	predictions = np.empty(l)
 
 	#Select element to predict
 	for toPredict in range(l):
@@ -66,17 +119,18 @@ def knn(k, path, indexOfAttributes, indexOfClass):
 		#Calculate Class from k-nn
 		cnt = Counter((train[closestByIndex])[:k,indexOfClass])
 
-		#Store predictions marking if they are correct or wrong
-		predictions = (cnt.most_common(1))[0][0]
+		#Check prediction
+		prediction = (cnt.most_common(1))[0][0]
+		confMatrix[classes.get(prediction)][classes.get(test[toPredict][indexOfClass])]+=1
 
-		confMatrix[classes.get(predictions)][classes.get(test[toPredict][indexOfClass])]+=1
+		#Store Details about the prediction as int
+		#Prediction - ActualClass
+		#11 => Prediction was 1, true class was 1
+		#21 => Prediction was 2, true class was 1
+		predictions[toPredict] = int(str(int(prediction))+str(int(test[toPredict][indexOfClass])))
 
-		#Mark wrong predictions
-		if test[toPredict][indexOfClass] == predictions:
-			test[toPredict][indexOfClass] = -1
-
+	#Print Results
 	print("######## RESULTS k = "+str(k)+" FOR "+path+" ########")
-
 	print("Accuracy: "+str((confMatrix[0][0] + confMatrix[1][1]) / l * 100)+"%")
 	print()
 	print("        CONFUSSION MATRIX")
@@ -87,18 +141,22 @@ def knn(k, path, indexOfAttributes, indexOfClass):
 	print()
 	print()
 
+	#replace expected results with predictions 
+	data[:,indexOfClass] = np.concatenate((train[:,indexOfClass], predictions))
+	return data
+
+
 #Settings
-testTrainingRatio = 0.2 #Part used for testing 
+testTrainingRatio = 0.8 #Part used for Training 
 
-knn(3, "haberman.data", (0,2), 3)
+habermanAxisNames = ["Age", "YearOperation", "AuxilliaryNodes", "Class"]
+wisconsinAxisNames = ["SampleNumber", "Clump Thickness", "Uniformity of Cell Size", "Uniformity of Cell Shape", "Marginal Adhesion","Single Epithelial Cell Size","Bare Nuclei","Bland Chromatin","Normal Nucleoli","Mitoses"]
+
+data = knn(3, "haberman.data", (0,2), 3)
 knn(6, "haberman.data", (0,2), 3)
+plot(data, [0,1,3], habermanAxisNames, "haberman k=3")
 
-knn(3, "breast-cancer-wisconsin.data", (1,9), 10)
+data = knn(3, "breast-cancer-wisconsin.data", (1,9), 10)
 knn(6, "breast-cancer-wisconsin.data", (1,9), 10)
-
-
-#plot2D(1,2,indexOfClass)
-#plot2D(0,2,indexOfClass)
-#plot2D(0,1,indexOfClass)
-
-#plot3D(0,1,2,indexOfClass)
+plot(data, [1,6,10], wisconsinAxisNames, "Wisconsin k=3")
+plot(data, [1,6,8,10], wisconsinAxisNames,"Wisconsin k=3")
