@@ -26,7 +26,7 @@ def calculateDistance(x,y):
 	dis = 0
 	#Compute the euclidian distance, exclude id field in first column and class in last column
 	for i in range(indexOfAttributes[0], indexOfAttributes[1]+1):
-		dis = dis + (x[i] - y[i])**2
+		dis = dis + np.power(x[i] - y[i],2)
 	return(np.sqrt(dis))
 
 def plot3D(xaxisIndex, yaxisIndex, zaxisIndex, classIndex):
@@ -79,7 +79,7 @@ for r in range(runs):
 	closestByIndex = dist.argsort()
 
 	#Calculate Class from k-nn
-	cnt = Counter((data[closestByIndex[::-1]])[:k,indexOfClass])
+	cnt = Counter((data[closestByIndex])[:k,indexOfClass])
 	prediction = (cnt.most_common(1))[0][0]
 
 	confMatrix[classes.get(prediction)][classes.get(data[toPredict][indexOfClass])]+=1
