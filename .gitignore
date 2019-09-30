@@ -102,3 +102,6 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# Ignore Solution for Lab3, since not allowed to publish
+Lab3/qlearningAgents\.py
