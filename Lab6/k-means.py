@@ -1,6 +1,3 @@
-# Init the centroids with one example out of each class
-# Compute the average image of each of the clusters
-
 import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
@@ -53,5 +50,5 @@ for i in range(10):
     else:
         prototype = np.concatenate((prototype, prot), axis=1)
 
-plt.matshow(prototype, cmap=plt.cm.gray)
+plt.matshow(prototype, cmap='gray')
 plt.show()
