@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.metrics import accuracy_score
+from sklearn.metrics import confusion_matrix
 from PIL import Image
 import random
 import matplotlib.pyplot as plt
@@ -40,6 +41,7 @@ y_test_pred = kmeans.predict(X_test)
 #Output Accuracy
 print("Accuracy score on training set: "+ str(accuracy_score(y_train, y_train_pred) * 100))
 print("Accuracy score on testing set: "+ str(accuracy_score(y_test, y_test_pred) * 100))
+print("Confusion matrix on testing set: \n" + str(confusion_matrix(y_test, y_test_pred)))
 
 #Display prototype of each digit
 for i in range(10):
